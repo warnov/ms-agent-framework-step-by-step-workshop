@@ -1,5 +1,6 @@
 from typing import Annotated
 from agent_framework import ai_function
+import random
 
 @ai_function(approval_mode="always_require")
 def submit_payment(
@@ -19,3 +20,20 @@ def submit_payment(
         f"Payment of ${amount:.2f} to '{recipient}' has been submitted "
         f"with reference '{reference}'."
     )
+
+@ai_function(
+    name="get_account_balance",
+    description="Retrieves the current account balance for the user in USD"
+)
+def get_account_balance() -> float:
+    """
+    Get the current account balance for the user.
+    
+    Returns:
+        float: The account balance in USD (numeric value only, no formatting).
+    
+    This operation is read-only and does not require approval.
+    """
+    # Generate a random balance between 1000 and 5000 USD
+    balance = random.uniform(1000, 5000)
+    return round(balance, 2)

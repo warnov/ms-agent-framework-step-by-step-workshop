@@ -69,13 +69,16 @@ from agent_framework import ChatAgent
 from agent_framework.openai import OpenAIResponsesClient
 from payment_functions import submit_payment  # Your approval-required tool
 
-async with ChatAgent(
-    chat_client=OpenAIResponsesClient(),
+agent = ChatAgent(
+    chat_client=AzureOpenAIChatClient(
+        credential=AzureCliCredential(),
+    	endpoint="[YOUR_ENDPOINT]",
+    	deployment_name="[YOUR_DEPLOYMENT_NAME]"
+    ),
     name="FinanceAgent",
     instructions="You assist users with financial operations and provide clear explanations.",
     tools=[submit_payment],
-) as agent:
-    # Agent is now ready to be used
+)
 
 ```
 
