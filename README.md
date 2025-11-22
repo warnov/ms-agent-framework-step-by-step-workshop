@@ -120,3 +120,6 @@ Here is the index for each lab:
 
 4. **[Lab 04 — Human-in-the-loop Approvals](04-human-in-loop/README.md)**
     *Keep humans in control of high-impact actions. Build a stateful `ChatAgent`, capture multiple approval requests per turn using `ChatMessage`, and resume tool execution safely with `prior_run` once each decision is collected.*
+
+5. **[Lab 05 — Structured Output](05-structured-output/README.md)**
+    *Collect strongly typed JSON from your agents using Pydantic response schemas. Compare blocking and streaming executions, aggregate streaming deltas with `AgentRunResponse.from_agent_response_generator`, and surface the results in an interactive console app.*
