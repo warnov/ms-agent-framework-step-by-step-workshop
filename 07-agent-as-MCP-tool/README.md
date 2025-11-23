@@ -57,6 +57,36 @@ python 07-agent-as-MCP-tool/mcp-client.py
 
 Use options 1–3 in the interactive menu to call the MCP server without needing an external host.
 
+## 5. Trying the server from Claude Desktop
+Claude Desktop can act as your MCP host; it launches the server whenever a conversation needs the restaurant context. Open **Claude Desktop ➜ Settings ➜ Developer ➜ Configure MCP Servers** and paste a configuration similar to the following (paths shown for this repo on Windows):
+
+```json
+{
+	"mcpServers": {
+		"restaurant-agent": {
+			"command": "D:\\src\\ms-agent-framework-step-by-step-workshop\\.venv\\Scripts\\python.exe",
+			"args": [
+				"D:\\src\\ms-agent-framework-step-by-step-workshop\\07-agent-as-MCP-tool\\mcp-server.py"
+			],
+			"env": {
+				"AOAI_ENDPOINT": "[YOUR_ENDPOINT]",
+				"AOAI_DEPLOYMENT": "[YOUR_DEPLOYMENT]"
+			}
+		}
+	}
+}
+```
+
+- Claude Desktop runs MCP servers in an isolated process and cannot see your shell environment variables, so the Azure OpenAI values must be repeated inside the `env` block.
+- The server authenticates with `AzureCliCredential`, so make sure `az login` (or `az login --tenant ...`) has already been run in the same profile before launching Claude. Otherwise the MCP session will fail when it tries to call Azure OpenAI.
+
+After saving the configuration:
+
+1. Restart Claude Desktop so it reloads the MCP manifest.
+2. Open any conversation and type `@restaurant-agent` (or choose it from the tool picker) to let Claude invoke the MCP server.
+3. Ask for “What are today’s specials?” or “How much is the truffle ravioli?” and confirm the responses match the functions you exposed.
+4. Watch the Claude side panel for tool call logs; errors there usually indicate Azure auth or path issues.
+
 ------
 
 ## 📝 Lab 07 Conclusion: Agent-as-Server via MCP
