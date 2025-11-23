@@ -154,3 +154,6 @@ Here is the index for each lab:
 
 7. **[Lab 07 — Expose an Agent as an MCP Server](07-agent-as-MCP-tool/README.md)**
     *Publish domain-specific tools through the Model Context Protocol using `agent.as_mcp_server()`, wire the stdio transport, and validate everything with a lightweight MCP client.*
+
+8. **[Lab 08 — Enabling Observability for Agents](08-observability/README.md)**
+    *Instrument agents with `setup_observability`, stream OpenTelemetry traces/metrics/logs to the console, and learn how to switch to OTLP or Azure Monitor exporters when collectors are available.*

@@ -115,5 +115,5 @@ You built a dedicated RestaurantAgent MCP server from scratch: local Python func
 
 - **[⬅️ Back: Lab 06 — Agent as Tool Composition](../06-agent-as-tool/README.md)** — Review how agents become reusable tools.
 - **[🏠 Back to Workshop Home](../README.md)** — Return to the lab index and prerequisites.
-- **[➡️ Next: Upcoming Lab](../README.md)** — Placeholder for the next module in the series.
+- **[➡️ Next: Lab 08 — Observability](../08-observability/README.md)** — Learn how to instrument agents with OpenTelemetry.
 
