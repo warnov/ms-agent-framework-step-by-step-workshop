@@ -151,3 +151,6 @@ Here is the index for each lab:
 
 6. **[Lab 06 — Agent as Tool Composition](06-agent-as-tool/README.md)**
     *Learn how to wrap a specialized agent as a reusable tool, compare direct vs tool-mediated responses, and customize tool metadata (name, description, argument labels) before wiring it into another agent’s toolset.*
+
+7. **[Lab 07 — Expose an Agent as an MCP Server](07-agent-as-MCP-tool/README.md)**
+    *Publish domain-specific tools through the Model Context Protocol using `agent.as_mcp_server()`, wire the stdio transport, and validate everything with a lightweight MCP client.*

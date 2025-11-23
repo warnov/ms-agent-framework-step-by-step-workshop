@@ -101,6 +101,7 @@ In this lab you connected two fully fledged agents: `WeatherAgent`, which owns a
 
 ## 🔗 Navigation
 
-- **[⬅️ Back: Lab 05 — Structured Output](../05-structured-output/README.md)**
-- **[🏠 Back to Workshop Home](../README.md)**
+- **[⬅️ Back: Lab 05 — Structured Output](../05-structured-output/README.md)** — Revisit structured response schemas and streaming.
+- **[🏠 Back to Workshop Home](../README.md)** — Return to the lab index and prerequisites.
+- **[➡️ Next: Lab 07 — Expose an Agent as an MCP Server](../07-agent-as-MCP-tool/README.md)** — Publish domain tools through the Model Context Protocol.
 
