@@ -249,4 +249,4 @@ You wired Agent Framework telemetry into a simple Azure OpenAI–backed agent an
 
 - **[⬅️ Back: Lab 07 — Agent as MCP Server](../07-agent-as-MCP-tool/README.md)** — Revisit how MCP servers expose agents as tools.
 - **[🏠 Back to Workshop Home](../README.md)** — Return to the lab index and prerequisites.
-- **[➡️ Next: Upcoming Lab](../README.md)** — Placeholder for the next module in the series.
+- **[➡️ Next: Lab 09 — Agents Middleware](../09-agents-middleware/README.md)** — Learn how to wrap agents and tools with middleware.

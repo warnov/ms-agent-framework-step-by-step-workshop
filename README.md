@@ -157,3 +157,6 @@ Here is the index for each lab:
 
 8. **[Lab 08 — Enabling Observability for Agents](08-observability/README.md)**
     *Instrument agents with `setup_observability`, stream OpenTelemetry traces/metrics/logs to the console, and learn how to switch to OTLP or Azure Monitor exporters when collectors are available.*
+
+9. **[Lab 09 — Agents Middleware](09-agents-middleware/README.md)**
+    *Add agent-level and function-level middleware to enforce logging, guardrails, or caching. Wire reusable middleware modules into Azure OpenAI agents, register tools with `ai_function`, and confirm the pipeline runs by inspecting console traces.*
