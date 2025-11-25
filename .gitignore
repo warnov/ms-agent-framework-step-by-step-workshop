@@ -27,3 +27,6 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+
+# Lab artifacts
+10-persisting-conversations/persisted_threads/
