@@ -90,9 +90,9 @@ You built a console agent that can pause and resume any conversation by serializ
 
 #### Key Takeaways from Lab 10
 
-- Serializing `AgentThread` gives you a complete snapshot that can be restored later with `agent.deserialize_thread`.
-- A persistent `USER>` prompt plus function-key shortcuts makes it easy to demo stateful agents in a single run.
-- Storing JSON per thread (e.g., `persisted_threads/<slug>.json`) keeps conversations portable across sessions or services.
+- `AgentThread.serialize()` captures every message in the conversation so you can recreate full context on any machine.
+- Deserializing threads avoids rerunning prompts, which lowers token usage and preserves business decisions or approvals.
+- Storing conversations as JSON makes them portable across services, letting you resume from CLI tools, web apps, or background jobs with the same state.
 
 ------
 
