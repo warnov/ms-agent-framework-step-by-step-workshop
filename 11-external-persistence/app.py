@@ -1,17 +1,51 @@
 import asyncio
 import os
 from textwrap import dedent
+from typing import cast
 
-from agent_framework import ChatAgent
+from agent_framework import ChatAgent, ChatMessage
 from agent_framework.azure import AzureOpenAIChatClient
 from azure.identity import AzureCliCredential
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 from redis_chat_message_store import RedisChatMessageStore
 
+def _message_text(msg: ChatMessage) -> str:
+    """Render a ChatMessage's textual content for CLI display."""
 
-def build_agent() -> ChatAgent:
-    """Create the agent that will rely on Redis for history."""
+    text = getattr(msg, "text", None)
+    if isinstance(text, str) and text.strip():
+        return text
+
+    contents = getattr(msg, "contents", None)
+    if isinstance(contents, list):
+        parts: list[str] = []
+        for item in contents:
+            item_text = getattr(item, "text", None)
+            if isinstance(item_text, str) and item_text:
+                parts.append(item_text)
+                continue
+            if isinstance(item, dict):
+                dict_text = item.get("text")
+                if isinstance(dict_text, str) and dict_text:
+                    parts.append(dict_text)
+        if parts:
+            return " | ".join(parts)
+
+    return "<non-text content>"
+
+
+def build_agent(redis_url: str) -> ChatAgent:
+    """Create the agent configured to hydrate threads with Redis-backed history."""
+
+    def store_factory() -> RedisChatMessageStore:
+        # Each new thread receives its own Redis-backed message store instance.
+        return RedisChatMessageStore(
+            redis_url=redis_url,
+            key_prefix="lab11",
+            max_messages=200,
+        )
+
     return ChatAgent(
         chat_client=AzureOpenAIChatClient(
             credential=AzureCliCredential(),
@@ -23,18 +57,19 @@ def build_agent() -> ChatAgent:
             "You are a concise travel assistant. Always remember prior user facts already stored in "
             "the conversation history. Reference those facts when answering."
         ),
+        chat_message_store_factory=store_factory,
     )
 
 
-async def create_thread(agent: ChatAgent, redis_url: str) -> tuple:
-    """Build a new thread + store pair so each session has its own Redis key."""
-    store = RedisChatMessageStore(
-        redis_url=redis_url,
-        key_prefix="lab11",
-        max_messages=200,
-    )
-    thread = agent.get_new_thread(message_store=store)
-    return thread, store
+def create_thread(agent: ChatAgent) -> tuple:
+    """Build a new thread and return it plus its Redis store."""
+    thread = agent.get_new_thread()
+    store = thread.message_store
+    if not isinstance(store, RedisChatMessageStore):
+        raise RuntimeError(
+            "Thread is not using the RedisChatMessageStore. Ensure build_agent sets chat_message_store_factory."
+        )
+    return thread, cast(RedisChatMessageStore, store)
 
 
 def print_menu(thread_key: str) -> None:
@@ -46,11 +81,9 @@ def print_menu(thread_key: str) -> None:
             Current Redis key: {thread_key or 'not initialized yet'}
             ----------------------------------------------
             [1] Send a user message (agent response stored in Redis)
-            [2] Peek at Redis history for the active thread
-            [3] Inspect serialized AgentThread metadata
+            [2] Peek at Redis history for this thread
+            [3] Load a saved Redis thread and continue working on it
             [4] Start a fresh thread (new Redis key)
-            [5] List every Redis key for this lab prefix
-            [6] Inspect a specific Redis key (read-only)
             [0] Exit workshop demo
             ==============================================
             """
@@ -67,18 +100,17 @@ async def show_history(store: RedisChatMessageStore) -> None:
     print("\nRedis has the following messages (oldest → newest):")
     for msg in messages:
         role = msg.role.value if hasattr(msg.role, "value") else msg.role
-        print(f"- {role.upper()}: {msg.content}")
+        print(f"- {role.upper()}: {_message_text(msg)}")
     print()
 
 
-async def show_serialized_thread(thread) -> None:
-    serialized = await thread.serialize()
-    print("\nSerialized thread state (notice this contains the Redis key & config, not the chat text):")
-    print(serialized)
-    print()
+def _thread_id_from_key(full_key: str, prefix: str) -> str:
+    if full_key.startswith(f"{prefix}:"):
+        return full_key[len(prefix) + 1 :]
+    return full_key
 
 
-async def list_all_keys(store: RedisChatMessageStore) -> None:
+async def _list_saved_thread_keys(store: RedisChatMessageStore) -> list[str]:
     pattern = f"{store.key_prefix}:*"
     try:
         keys = await store._redis_client.keys(pattern)  # type: ignore[attr-defined]
@@ -87,49 +119,67 @@ async def list_all_keys(store: RedisChatMessageStore) -> None:
             "\nUnable to reach Redis to list keys. Verify your REDIS_URL (TLS/port 6380) and network connectivity."
         )
         print(f"Details: {exc}\n")
-        return
+        return []
+
+    keys.sort()
+    return keys
+
+
+async def load_existing_thread(
+    agent: ChatAgent,
+    current_thread,
+    current_store: RedisChatMessageStore,
+) -> tuple:
+    keys = await _list_saved_thread_keys(current_store)
     if not keys:
-        print("\nNo Redis keys found for this prefix yet.\n")
-        return
-    print("\nRedis keys using this prefix:")
-    for key in keys:
-        print(f"- {key}")
-    print()
+        print("\nThere are no persisted threads yet. Start a conversation first.\n")
+        return current_thread, current_store
+
+    print("\nAvailable Redis threads:")
+    for idx, key in enumerate(keys, start=1):
+        try:
+            count = await current_store._redis_client.llen(key)  # type: ignore[attr-defined]
+        except RedisConnectionError:
+            count = "?"
+        print(f"[{idx}] {key} ({count} messages)")
+
+    selection = input("\nEnter the number to load (or press Enter to cancel): ").strip()
+    if not selection:
+        print("Cancelled loading an existing thread.\n")
+        return current_thread, current_store
+    if not selection.isdigit():
+        print("Please enter a numeric option.\n")
+        return current_thread, current_store
+
+    index = int(selection)
+    if index < 1 or index > len(keys):
+        print("That index does not exist.\n")
+        return current_thread, current_store
+
+    selected_key = keys[index - 1]
+    thread_id = _thread_id_from_key(selected_key, current_store.key_prefix)
+    new_store = RedisChatMessageStore(
+        redis_url=current_store.redis_url,
+        thread_id=thread_id,
+        key_prefix=current_store.key_prefix,
+        max_messages=current_store.max_messages,
+    )
+
+    new_thread = agent.get_new_thread()
+    placeholder_store = new_thread.message_store
+    if isinstance(placeholder_store, RedisChatMessageStore):
+        await placeholder_store.aclose()
+    new_thread.message_store = new_store
+
+    await current_store.aclose()
+
+    print(f"\nLoaded thread: {selected_key}")
+    await show_history(new_store)
+    return new_thread, new_store
 
 
-async def inspect_specific_key(store: RedisChatMessageStore) -> None:
-    key = input("Enter the full Redis key to inspect: ").strip()
-    if not key:
-        print("Key cannot be empty.\n")
-        return
-    try:
-        exists = await store._redis_client.exists(key)  # type: ignore[attr-defined]
-    except RedisConnectionError as exc:
-        print(
-            "\nUnable to reach Redis to inspect that key. Confirm connectivity and try again."
-        )
-        print(f"Details: {exc}\n")
-        return
-    if not exists:
-        print("That key does not exist.\n")
-        return
-    try:
-        values = await store._redis_client.lrange(key, 0, -1)  # type: ignore[attr-defined]
-    except RedisConnectionError as exc:
-        print("Encountered a network error while reading that key.\n")
-        print(f"Details: {exc}\n")
-        return
-    if not values:
-        print("The key exists but contains no messages.\n")
-        return
-    print("\nMessages inside that Redis list:")
-    for raw in values:
-        print(f"- {raw}")
-    print()
-
-
-async def interactive_demo(agent: ChatAgent, redis_url: str) -> None:
-    thread, store = await create_thread(agent, redis_url)
+async def interactive_demo(agent: ChatAgent) -> None:
+    thread, store = create_thread(agent)
 
     while True:
         print_menu(store.redis_key)
@@ -149,7 +199,7 @@ async def interactive_demo(agent: ChatAgent, redis_url: str) -> None:
             continue
 
         if choice == "3":
-            await show_serialized_thread(thread)
+            thread, store = await load_existing_thread(agent, thread, store)
             continue
 
         if choice == "4":
@@ -158,16 +208,8 @@ async def interactive_demo(agent: ChatAgent, redis_url: str) -> None:
                 print("Keeping current thread.\n")
                 continue
             await store.aclose()
-            thread, store = await create_thread(agent, redis_url)
+            thread, store = create_thread(agent)
             print("Started a brand-new thread + Redis list.\n")
-            continue
-
-        if choice == "5":
-            await list_all_keys(store)
-            continue
-
-        if choice == "6":
-            await inspect_specific_key(store)
             continue
 
         if choice == "0":
@@ -185,9 +227,9 @@ async def main() -> None:
             "Set the REDIS_URL environment variable (e.g., redis://:<primary_key>@<host>:6380/0)."
         )
 
-    agent = build_agent()
+    agent = build_agent(redis_url)
     print("\nWelcome to Lab 11! We'll persist agent memory in Azure Cache for Redis.\n")
-    await interactive_demo(agent, redis_url)
+    await interactive_demo(agent)
 
 
 if __name__ == "__main__":

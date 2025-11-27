@@ -105,7 +105,7 @@ class MCPRestaurantClient:
 
 async def main():
     """Run the sample client with a basic interactive loop."""
-    SERVER_SCRIPT = "mcp-server.py"
+    SERVER_SCRIPT = "D:/src/ms-agent-framework-step-by-step-workshop/07-agent-as-MCP-tool/mcp-server.py"
     
     client = MCPRestaurantClient(SERVER_SCRIPT)
     

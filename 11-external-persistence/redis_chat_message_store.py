@@ -1,10 +1,11 @@
 from collections.abc import Sequence
+import json
 from typing import Any
 from uuid import uuid4
-from pydantic import BaseModel
-import json
+
 import redis.asyncio as redis
 from agent_framework import ChatMessage
+from pydantic import BaseModel
 
 
 class RedisStoreState(BaseModel):
@@ -120,15 +121,62 @@ class RedisChatMessageStore:
                 self.redis_url = state.redis_url
                 self._redis_client = redis.from_url(self.redis_url, decode_responses=True)
 
+    async def serialize(self, **kwargs: Any) -> dict[str, Any]:
+        """Return a lightweight structure compatible with ChatMessageStoreState."""
+        # AgentThreadState expects a list of messages, so provide an empty placeholder
+        # plus embed our Redis configuration in a sidecar field.
+        state = await self.serialize_state(**kwargs)
+        return {"messages": [], "store_metadata": state}
+
+    @classmethod
+    async def deserialize(cls, serialized_store_state: Any, **kwargs: Any) -> "RedisChatMessageStore":
+        """Return a new store instance from serialized state."""
+        if not serialized_store_state:
+            raise ValueError("serialized_store_state is required to deserialize RedisChatMessageStore")
+
+        redis_state = serialized_store_state.get("store_metadata")
+        if redis_state is None:
+            raise ValueError("store_metadata missing from serialized_store_state")
+
+        state = RedisStoreState.model_validate(redis_state, **kwargs)
+        redis_url = state.redis_url or kwargs.get("redis_url")
+        if not isinstance(redis_url, str):
+            raise ValueError("redis_url must be provided when deserializing RedisChatMessageStore")
+
+        return cls(
+            redis_url=redis_url,
+            thread_id=state.thread_id,
+            key_prefix=state.key_prefix,
+            max_messages=state.max_messages,
+        )
+
+    async def update_from_state(self, serialized_store_state: Any, **kwargs: Any) -> None:
+        """Update this instance with serialized state (protocol helper)."""
+        redis_state = serialized_store_state.get("store_metadata") if serialized_store_state else None
+        if not redis_state:
+            return
+        await self.deserialize_state(redis_state, **kwargs)
+
     def _serialize_message(self, message: ChatMessage) -> str:
         """Serialize a ChatMessage to JSON string."""
-        message_dict = message.model_dump()
+        if hasattr(message, "to_dict"):
+            message_dict = message.to_dict()
+        elif hasattr(message, "model_dump"):
+            message_dict = message.model_dump()
+        elif isinstance(message, BaseModel):
+            message_dict = message.model_dump()
+        else:
+            raise TypeError("ChatMessage does not support to_dict/model_dump serialization")
         return json.dumps(message_dict, separators=(",", ":"))
 
     def _deserialize_message(self, serialized_message: str) -> ChatMessage:
         """Deserialize a JSON string to ChatMessage."""
         message_dict = json.loads(serialized_message)
-        return ChatMessage.model_validate(message_dict)
+        if hasattr(ChatMessage, "from_dict"):
+            return ChatMessage.from_dict(message_dict)
+        if hasattr(ChatMessage, "model_validate"):
+            return ChatMessage.model_validate(message_dict)
+        raise TypeError("ChatMessage does not support from_dict/model_validate deserialization")
 
     async def clear(self) -> None:
         """Remove all messages from the store."""
