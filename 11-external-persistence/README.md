@@ -214,6 +214,21 @@ The loop is intentionally simple but demonstrates the full lifecycle: send promp
 
 By studying `app.py` alongside `redis_chat_message_store.py`, you can see both halves of the persistence story: the store satisfies the protocol, and the client exercises it in realistic workflows (new conversations, inspections, resumptions). This structure is a solid starting point for any agent that needs durable conversational state.
 
+## Lab recap & next steps
+
+1. **Implement durable storage** – `RedisChatMessageStore` shows how to fulfill the `ChatMessageStore` protocol, serialize messages, cap history, and rehydrate threads across processes.
+2. **Wire the agent** – `build_agent` registers the store factory so every `AgentThread` automatically points to Azure Cache for Redis without extra boilerplate.
+3. **Exercise persistence interactively** – the CLI in `app.py` lets you send prompts, inspect the Redis-backed history, and reload existing keys to prove that conversations survive restarts.
+4. **Extend as needed** – reuse this pattern to plug in other storage engines (SQL, Cosmos DB, blob storage) or to add tooling such as automated cleanup scripts, summaries, and multi-tenant key prefixes.
+
+When you’re ready, run `python 11-external-persistence/app.py`, experiment with creating multiple threads, then advance to the next lab with confidence that you can persist chat history outside the agent process.
+
+## 🔗 Navigation
+
+- **[⬅️ Back: Lab 10 — Persisting Conversations](../10-persisting-conversations/README.md)** — Review how to serialize threads to disk with hotkey-driven workflows.
+- **[🏠 Back to Workshop Home](../README.md)** — Return to the full lab index and prerequisites.
+- **[➡️ Next: Lab 12 — Agent Memory (WIP)](../12-agent-memory/README.md)** — Preview the upcoming memory patterns lab.
+
 
 
 

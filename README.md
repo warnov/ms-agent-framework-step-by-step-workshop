@@ -163,3 +163,6 @@ Here is the index for each lab:
 
 10. **[Lab 10 — Persisting Conversations](10-persisting-conversations/README.md)**
     *Persist `AgentThread` state to disk, reload conversations on demand, and drive the workflow from a Windows console app with hotkeys to create, save, load, and inspect stored threads.*
+
+11. **[Lab 11 — External Persistence with Redis](11-external-persistence/README.md)**
+    *Swap the in-memory store for a Redis-backed `ChatMessageStore`, keep every thread in Azure Cache for Redis, and use an interactive CLI to inspect, resume, and manage conversations across sessions.*
